@@ -1,0 +1,37 @@
+// standard modules
+var fs = require('fs');
+var path = require('path');
+var stream = require('stream');
+
+// vendor modules
+var gm = require('gm');
+var cv = require('opencv');
+var async = require('async');
+
+var paths = {
+  src: path.resolve(__dirname, 'src2/'),
+  dist: path.resolve(__dirname, 'dist2/')
+};
+
+
+cv.readImage(path.resolve(paths.src, '101141.JPG'), function(err, im){
+  im.detectObject(cv.FACE_CASCADE, {}, function(err, faces){
+    var x = faces[0];
+    var h = im.height();
+    var w = im.width();
+    var cropped = im.roi(x.x, x.y, x.width, x.height);
+    console.log(x.width);
+    cropped.save('./out.jpg');
+  });
+});
+
+/*
+
+ gm(path.resolve(paths.src, file))
+ .resize(null, '200')
+ .gravity('Center')
+ .crop('150', '200')
+ .stream()
+ .pipe(fs.createWriteStream(path.resolve(paths.src, file)));
+
+ */
