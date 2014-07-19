@@ -1,5 +1,6 @@
-// config module
+// config
 var config = require('./config');
+var paths = config.paths;
 
 // standard modules
 var fs = require('fs');
@@ -10,8 +11,6 @@ var stream = require('stream');
 var gm = require('gm');
 var cv = require('opencv');
 var async = require('async');
-
-var paths = config.paths;
 
 
 async.waterfall([
@@ -31,33 +30,38 @@ async.waterfall([
 	    var origHeight = im.height();
 	    var origWidth = im.width();
 
+	    // the biggest face is usually correct
             for(var i = 0; i < results.length; i++) {
 	      tmp = results[i];
 
 	      if(!face || face.width < tmp.width) face = tmp;
             }
 
+	    // enlarge too-tight standard FACE_CASCADE rect
 	    marginX = Math.min(origWidth - (face.x + face.width), face.x);
 	    marginY = Math.min(origHeight - (face.y + face.height), face.y);
 	    cropped = im.roi(face.x - marginX, face.y - marginY, face.width + (marginX * 2) , face.height + (marginY * 2));
 
+	    // could all be done in opencv
 	    gm((cropped.toBuffer()))
 	      .resize(null, config.height)
 	      .gravity('Center')
 	      .crop(config.width, config.height)
 	      .stream()
 	      .pipe(fs.createWriteStream(path.resolve(paths.dist, filename)));
+	    
 	    len--;
 	    console.log('completed ' + filename + ', ' + len + ' files remaining');
-	    
 	    cb(null);
 	  } else {
+	    // if there aren't any detected faces just crop to the center and warn about it
 	    gm(path.resolve(paths.src, filename))
 	      .resize(null, config.height)
 	      .gravity('Center')
 	      .crop(config.width, config.height)
 	      .stream()
 	      .pipe(fs.createWriteStream(path.resolve(paths.dist, filename)));
+	    
 	    len--;
 	    console.warn('no face detected in file ' + filename + ', used dumb cropping, ' + len + ' files remaining');
 	    cb(null);
@@ -66,6 +70,7 @@ async.waterfall([
       });
     };
 
+    // not very fast, but it doesn't need to be
     async.eachSeries(files, smartCrop, function(err){
       err && console.log(err);
       callback(null);
